@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🛒 Your Cart - FullStack Cafe</title>
+    <link rel="stylesheet" href="/css/style.css">
+
+<style>
+body{
+    background:#f4f4f4;
+}
+
+.cart-main-container{
+    max-width:1100px;
+    margin:40px auto;
+    padding:0 20px;
+}
+
+.cart-table{
+    width:100%;
+    background:white;
+    border-radius:12px;
+    border-collapse:collapse;
+    overflow:hidden;
+}
+
+.cart-table th{
+    background:#1a1a1a;
+    color:white;
+    padding:18px;
+    text-align:left;
+}
+
+.cart-table td{
+    padding:20px;
+    border-bottom:1px solid #eee;
+}
+
+.cart-img{
+    width:80px;
+    height:60px;
+    object-fit:cover;
+    border-radius:8px;
+}
+
+.qty-controls{
+    display:flex;
+    gap:10px;
+    align-items:center;
+}
+
+.qty-btn{
+    width:28px;
+    height:28px;
+    border-radius:50%;
+    cursor:pointer;
+    border:1px solid #ccc;
+    background:white;
+    font-weight:bold;
+}
+
+.qty-btn:hover{
+    background:#ffcc00;
+}
+
+.remove-icon-btn{
+    border:1px solid #ff4d4d;
+    color:#ff4d4d;
+    background:white;
+    padding:6px 12px;
+    cursor:pointer;
+    border-radius:6px;
+}
+
+.remove-icon-btn:hover{
+    background:#ff4d4d;
+    color:white;
+}
+
+.cart-summary{
+    margin-top:30px;
+    background:white;
+    padding:25px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    border-radius:12px;
+}
+</style>
+</head>
+
+<body>
+
+<%- include('partials/header') %>
+
+<div class="cart-main-container">
+
+<% if(!cart || cart.length === 0){ %>
+
+    <h2>Your cart is empty!</h2>
+
+<% } else { %>
+
+<h2>🛒 Your Selection</h2>
+
+<table class="cart-table">
+<thead>
+<tr>
+<th>Item</th>
+<th>Name</th>
+<th>Price</th>
+<th>Quantity</th>
+<th>Subtotal</th>
+<th>Action</th>
+</tr>
+</thead>
+
+<tbody>
+
+<% cart.forEach((item,index)=>{ %>
+
+<tr>
+
+<td>
+<img src="<%= item.image %>" alt="<%= item.name %>" class="cart-img">
+</td>
+
+<td><strong><%= item.name %></strong></td>
+
+<td>₹<%= item.price %></td>
+
+<td>
+<div class="qty-controls">
+
+<button class="qty-btn qty-remove" data-index="<%= index %>">-</button>
+
+<span style="min-width:20px;text-align:center;">
+<%= item.quantity %>
+</span>
+
+<button class="qty-btn qty-add" data-index="<%= index %>">+</button>
+
+</div>
+</td>
+
+<td style="font-weight:bold;">
+₹<%= item.price * item.quantity %>
+</td>
+
+<td>
+<button class="remove-icon-btn remove-btn"
+data-index="<%= index %>">
+Remove
+</button>
+</td>
+
+</tr>
+
+<% }) %>
+
+</tbody>
+</table>
+
+<div class="cart-summary">
+<h3>
+Grand Total: ₹ <%= totalPrice %>
+</h3>
+
+<button id="checkoutBtn"
+style="padding:10px 20px;border-radius:8px;cursor:pointer;">
+Place Order Now
+</button>
+</div>
+
+<% } %>
+
+</div>
+
+<script>
+
+/* ================= QUANTITY BUTTONS ================= */
+
+document.querySelectorAll(".qty-add").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+        handleAction(btn.dataset.index,"add");
+    });
+});
+
+document.querySelectorAll(".qty-remove").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+        handleAction(btn.dataset.index,"remove");
+    });
+});
+
+
+async function handleAction(index, action) {
+
+    try{
+        const response = await fetch("/products/update-quantity", {
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body:JSON.stringify({ index, action })
+        });
+
+        const data = await response.json();
+
+        if(data.success){
+            location.reload();
+        }else{
+            alert("Failed to update quantity");
+        }
+
+    }catch(err){
+        console.error(err);
+        alert("Server error while updating cart");
+    }
+}
+
+
+/* ================= REMOVE ITEM ================= */
+
+document.querySelectorAll(".remove-btn").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+        removeItem(btn.dataset.index);
+    });
+});
+
+async function removeItem(index){
+
+    if(!confirm("Remove this item from cart?")) return;
+
+    try{
+        const response = await fetch("/products/remove-item",{
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body:JSON.stringify({ index })
+        });
+
+        const data = await response.json();
+
+        if(data.success){
+            location.reload();
+        }
+
+    }catch(err){
+        console.error(err);
+        alert("Error removing item");
+    }
+}
+
+
+/* ================= CHECKOUT ================= */
+
+const checkoutBtn = document.getElementById("checkoutBtn");
+
+if(checkoutBtn){
+checkoutBtn.addEventListener("click", checkout);
+}
+
+async function checkout(){
+
+    try{
+        const response = await fetch("/products/checkout",{
+            method:"POST"
+        });
+
+        const data = await response.json();
+
+        if(data.success){
+            alert("🎉 Order Placed Successfully!");
+            window.location.href="/products/my-orders";
+        }else{
+            alert(data.message || "Checkout failed");
+        }
+
+    }catch(err){
+        console.error(err);
+        alert("Checkout error");
+    }
+}
+
+</script>
+
+<%- include('partials/footer') %>
+
+</body>
+</html>

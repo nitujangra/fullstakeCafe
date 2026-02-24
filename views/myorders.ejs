@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>My Orders - FullStack Cafe</title>
+    <link rel="stylesheet" href="/css/style.css">
+
+<style>
+.orders-container { max-width: 800px; margin: 50px auto; padding: 0 20px; }
+
+.order-card {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 25px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    border-left: 6px solid #ffcc00;
+}
+
+.order-header {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px dashed #ddd;
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+}
+
+.status-badge {
+    background: #e8f5e9;
+    color: #2e7d32;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.order-items { list-style: none; padding: 0; }
+
+.item-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    color: #555;
+}
+
+.order-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+.total-amt {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #27ae60;
+}
+
+.reorder-btn {
+    background: #ffcc00;
+    color: #000;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.empty-msg {
+    text-align: center;
+    margin-top: 100px;
+    color: #888;
+}
+</style>
+</head>
+
+<body>
+
+<%- include('partials/header') %>
+
+<div class="orders-container">
+<h1>📜 My Order History</h1>
+
+<% if (orders && orders.length > 0) { %>
+
+    <% orders.forEach(order => { %>
+        <div class="order-card">
+
+            <div class="order-header">
+                <div>
+                    <strong>
+                        Order #<%= order._id.toString().slice(-6).toUpperCase() %>
+                    </strong>
+
+                    <div style="font-size:0.8rem;color:#999;">
+                        <%= new Date(order.createdAt).toLocaleString() %>
+                    </div>
+                </div>
+
+                <!-- ⭐ IMPORTANT: add data-id -->
+                <span class="status-badge"
+                      data-order-id="<%= order._id %>">
+                      <%= order.status %>
+                </span>
+            </div>
+
+            <ul class="order-items">
+                <% order.items.forEach(item => { %>
+                    <li class="item-row">
+                        <span><%= item.name %> (x<%= item.quantity %>)</span>
+                        <span>₹<%= item.price * item.quantity %></span>
+                    </li>
+                <% }) %>
+            </ul>
+
+            <div class="order-footer">
+                <form action="/products/reorder/<%= order._id %>" method="POST">
+                    <button type="submit" class="reorder-btn">
+                        🔄 Reorder
+                    </button>
+                </form>
+
+                <div class="total-amt">
+                    Total: ₹<%= order.totalAmount %>
+                </div>
+            </div>
+
+        </div>
+    <% }) %>
+
+<% } else { %>
+
+<div class="empty-msg">
+    <h2>No orders found!</h2>
+    <p>Looks like you haven't tasted our coffee yet.</p>
+    <a href="/products">Browse Menu</a>
+</div>
+
+<% } %>
+
+</div>
+
+<%- include('partials/footer') %>
+
+
+<!-- ================= LIVE STATUS UPDATE SCRIPT ================= -->
+
+<script>
+async function refreshOrderStatus() {
+    try {
+        const res = await fetch("/products/my-orders-data");
+        const data = await res.json();
+
+        if (!data.success) return;
+
+        data.orders.forEach(order => {
+            const badge =
+                document.querySelector(
+                    `[data-order-id="${order._id}"]`
+                );
+
+            if (badge) {
+                badge.innerText = order.status;
+            }
+        });
+
+    } catch (err) {
+        console.log("Auto refresh error");
+    }
+}
+
+// refresh every 5 seconds
+setInterval(refreshOrderStatus, 5000);
+</script>
+
+</body>
+</html>

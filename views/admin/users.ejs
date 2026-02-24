@@ -1,0 +1,20 @@
+
+<link rel="stylesheet" href="/css/style.css">
+
+<h2>Manage Users</h2>
+
+<% users.forEach(user => { %>
+    <div>
+        <p>
+            <%= user.name %> - <%= user.email %>
+            | Status: <%= user.isBlocked ? "Blocked" : "Active" %>
+        </p>
+
+        <a href="/admin/users/toggle/<%= user._id %>">
+            <button>
+                <%= user.isBlocked ? "Activate" : "Block" %>
+            </button>
+        </a>
+    </div>
+    <hr>
+<% }) %>

@@ -1,0 +1,249 @@
+<meta http-equiv="Content-Security-Policy"
+content="default-src 'self' https://cdnjs.cloudflare.com;
+style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com;
+script-src 'self' 'unsafe-inline';
+connect-src 'self' http://localhost:3000;">
+
+<style>
+:root {
+    --admin-red:#c62828;
+    --bg-light:#f8f9fa;
+    --text-dark:#333;
+    --border-color:#e0e0e0;
+    --success-green:#2e7d32;
+}
+
+body{
+    font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+    background:var(--bg-light);
+    margin:0;
+    color:var(--text-dark);
+}
+
+.container{
+    max-width:1200px;
+    margin:40px auto;
+    padding:0 20px;
+}
+
+.dashboard-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:30px;
+}
+
+/* ✅ FIXED BUTTON */
+.add-product-btn{
+    background:var(--admin-red);
+    color:white;
+    padding:10px 20px;
+    border-radius:8px;
+    text-decoration:none;
+    font-weight:bold;
+    transition:.3s;
+}
+.add-product-btn:hover{
+    opacity:.9;
+}
+
+.stats-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+    gap:20px;
+    margin-bottom:30px;
+}
+
+.order-card{
+    background:white;
+    border-radius:12px;
+    padding:20px;
+    box-shadow:0 2px 10px rgba(0,0,0,.05);
+    border:1px solid var(--border-color);
+}
+
+.tabs{
+    display:flex;
+    gap:15px;
+    margin-bottom:20px;
+    border-bottom:2px solid var(--border-color);
+    padding-bottom:10px;
+}
+
+.tab{
+    padding:10px 20px;
+    cursor:pointer;
+    font-weight:600;
+    color:#666;
+}
+
+.tab.active{
+    color:var(--admin-red);
+    border-bottom:3px solid var(--admin-red);
+}
+
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+th{
+    text-align:left;
+    padding:12px;
+    background:#f1f1f1;
+}
+
+td{
+    padding:12px;
+    border-bottom:1px solid #eee;
+}
+
+.status-badge{
+    padding:4px 10px;
+    border-radius:4px;
+    font-size:.75rem;
+    font-weight:bold;
+}
+.status-available{background:#d4edda;color:#155724;}
+.status-soldout{background:#f8d7da;color:#721c24;}
+
+.pulse-dot{
+    height:10px;
+    width:10px;
+    background:var(--success-green);
+    border-radius:50%;
+    display:inline-block;
+    margin-left:5px;
+}
+</style>
+
+
+<div class="container">
+
+    <div class="dashboard-header">
+        <div>
+            <h1>Cafe Control Hub <span class="pulse-dot"></span></h1>
+            <p>Admin Dashboard</p>
+        </div>
+
+        <!-- ✅✅✅ MAIN FIX HERE -->
+        <a href="/admin/add-product" class="add-product-btn">
+            + Add Product
+        </a>
+
+    </div>
+
+
+    <!-- ===== STATS ===== -->
+    <div class="stats-grid">
+        <div class="order-card">
+            <h3>₹<%= stats.totalRevenue %></h3>
+            <p>Revenue</p>
+        </div>
+
+        <div class="order-card">
+            <h3><%= stats.activeOrders %></h3>
+            <p>Active Orders</p>
+        </div>
+
+        <div class="order-card">
+            <h3><%= stats.orderCount %></h3>
+            <p>Total Orders</p>
+        </div>
+    </div>
+
+
+    <!-- ===== TABS ===== -->
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('orders-section',event)">Live Orders</div>
+        <div class="tab" onclick="switchTab('menu-section',event)">Manage Menu</div>
+    </div>
+
+
+    <!-- ===== ORDERS ===== -->
+    <div id="orders-section" class="tab-content active">
+        <div class="order-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Items</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                <% orders.forEach(order => { %>
+                    <tr>
+                        <td>
+                            <strong><%= order.user ? order.user.username : 'Guest' %></strong><br>
+                            <small><%= order.user ? order.user.email : '' %></small>
+                        </td>
+
+                        <td>
+                            <% order.items.forEach(item => { %>
+                                <div><%= item.quantity %>x <%= item.productName %></div>
+                            <% }) %>
+                        </td>
+
+                        <td>₹<%= order.totalAmount %></td>
+
+                        <td><%= order.status %></td>
+                    </tr>
+                <% }) %>
+                </tbody>
+
+            </table>
+        </div>
+    </div>
+
+
+    <!-- ===== MENU ===== -->
+    <div id="menu-section" class="tab-content">
+        <div class="order-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Price</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                <% products.forEach(product => { %>
+                    <tr>
+                        <td><strong><%= product.name %></strong></td>
+                        <td>₹<%= product.price %></td>
+                        <td>
+                            <span class="status-badge <%= product.isActive ? 'status-available':'status-soldout' %>">
+                                <%= product.isActive ? 'Available':'Sold Out' %>
+                            </span>
+                        </td>
+                    </tr>
+                <% }) %>
+                </tbody>
+
+            </table>
+        </div>
+    </div>
+
+</div>
+
+
+<script>
+function switchTab(sectionId,event){
+    document.querySelectorAll('.tab-content')
+        .forEach(el=>el.classList.remove('active'));
+
+    document.querySelectorAll('.tab')
+        .forEach(el=>el.classList.remove('active'));
+
+    document.getElementById(sectionId).classList.add('active');
+    event.currentTarget.classList.add('active');
+}
+</script>

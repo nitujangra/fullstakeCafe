@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Owner Dashboard - Fullstack Cafe</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="admin-body">
+
+    <div class="admin-container">
+        <header class="admin-header">
+            <h1>Owner Dashboard</h1>
+            <p>Welcome back, Admin. Here is your cafe's performance.</p>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <strong>Total Orders</strong>
+                <span><%= stats.orders %></span>
+            </div>
+            <div class="stat-card">
+                <strong>Total Revenue</strong>
+                <span><%= stats.revenue %></span>
+            </div>
+            <div class="stat-card">
+                <strong>Support Requests</strong>
+                <span><%= stats.messages %></span>
+            </div>
+        </div>
+
+        <div class="admin-actions">
+            <div class="action-card">
+                <h3>Product Management</h3>
+                <p>Add, edit, or remove items from your menu.</p>
+                <a href="/admin/products" class="btn-small">Manage Menu</a>
+            </div>
+            <div class="action-card">
+                <h3>Customer Messages</h3>
+                <p>View latest support requests from users.</p>
+                <a href="/admin/messages" class="btn-small">View Inbox</a>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

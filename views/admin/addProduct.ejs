@@ -1,0 +1,107 @@
+<link rel="stylesheet" href="/css/style.css">
+
+<div class="admin-container">
+
+<h2>🍔 Manage Products</h2>
+
+<!-- ================= ADD PRODUCT FORM ================= -->
+
+<form 
+    action="/admin/add-product" 
+    method="POST" 
+    enctype="multipart/form-data"
+    class="product-form"
+>
+
+    <!-- Product Name -->
+    <input 
+        type="text" 
+        name="name" 
+        placeholder="Product Name"
+        required
+    >
+
+    <!-- Price -->
+    <input 
+        type="number" 
+        name="price" 
+        placeholder="Price (₹)"
+        required
+    >
+
+    <!-- Category (ENUM SAFE ✅) -->
+    <select name="category" required>
+        <option value="">Select Category</option>
+        <option value="junkfood">Junk Food</option>
+        <option value="coffee">Coffee</option>
+        <option value="drinks">Drinks</option>
+        <option value="icecream">Ice Cream</option>
+        <option value="southindian">South Indian</option>
+        <option value="snacks">Snacks</option>
+        <option value="dessert">Dessert</option>
+        <option value="meal">Meal</option>
+    </select>
+
+    <!-- Description -->
+    <textarea 
+        name="description" 
+        placeholder="Product Description..."
+        rows="4"
+        required
+    ></textarea>
+
+    <!-- Image Upload -->
+    <input 
+        type="file" 
+        name="image"
+        accept="image/*"
+        required
+    >
+
+    <button type="submit" class="add-btn">
+        ➕ Add Product
+    </button>
+
+</form>
+
+<hr>
+
+<!-- ================= PRODUCT LIST ================= -->
+
+<div class="product-list">
+
+<% products.forEach(product => { %>
+
+    <div class="product-card">
+
+        <h4>
+            <%= product.name %> — ₹<%= product.price %>
+        </h4>
+
+        <% if(product.description){ %>
+            <p><%= product.description %></p>
+        <% } %>
+
+        <img 
+            src="/uploads/<%= product.image %>" 
+            width="100"
+            alt="<%= product.name %>"
+        >
+
+        <br><br>
+
+        <a 
+            href="/admin/products/delete/<%= product._id %>"
+            onclick="return confirm('Delete this product?')"
+            class="delete-btn"
+        >
+            Delete
+        </a>
+
+    </div>
+
+<% }) %>
+
+</div>
+
+</div>

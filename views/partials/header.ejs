@@ -1,0 +1,64 @@
+<header class="main-header">
+    <nav class="navbar">
+
+        <!-- LOGO -->
+        <div class="logo">
+            <a href="/">☕ FullStack Cafe</a>
+        </div>
+
+        <!-- NAV LINKS -->
+        <ul class="nav-links">
+
+            <li><a href="/products">Menu</a></li>
+
+            <% if (typeof user !== 'undefined' && user) { %>
+
+                <!-- MY ORDERS -->
+                <li>
+                    <a href="/products/my-orders" class="orders-link">
+                        📜 My Orders
+                    </a>
+                </li>
+
+                <!-- USER PROFILE (NO DROPDOWN) -->
+                <li class="user-info">
+
+                    <!-- Avatar (First Letter Auto) -->
+                    <div class="avatar">
+                        <%= user.name ? user.name.charAt(0).toUpperCase() : 'U' %>
+                    </div>
+
+                    <!-- Username -->
+                    <span class="username">
+                        <%= user.name || 'User' %>
+                    </span>
+
+                </li>
+
+                <!-- LOGOUT -->
+                <li>
+                    <a href="/logout" class="auth-btn">Logout</a>
+                </li>
+
+            <% } else { %>
+
+                <li><a href="/login">Login</a></li>
+                <li><a href="/signup" class="auth-btn">Sign Up</a></li>
+
+            <% } %>
+
+            <!-- CART -->
+            <li>
+                <a href="/products/cart" class="cart-icon">
+                    🛒 Cart
+                    <span class="badge" id="cart-count">
+                        <%= (typeof session !== 'undefined' && session.cart)
+                            ? session.cart.reduce((total, item) => total + item.quantity, 0)
+                            : 0 %>
+                    </span>
+                </a>
+            </li>
+
+        </ul>
+    </nav>
+</header>

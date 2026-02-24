@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Food Menu</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<%- include('partials/header') %>
+
+<!-- ================= TOP CONTROLS ================= -->
+
+<div class="top-controls">
+
+    <!-- CATEGORY -->
+    <div class="category-nav">
+        <a href="/products?category=all&search=<%= search %>" class="<%= category==='all'?'active':'' %>">All</a>
+        <a href="/products?category=junkfood&search=<%= search %>" class="<%= category==='junkfood'?'active':'' %>">JunkFood</a>
+        <a href="/products?category=coffee&search=<%= search %>" class="<%= category==='coffee'?'active':'' %>">☕ Coffee</a>
+        <a href="/products?category=drinks&search=<%= search %>" class="<%= category==='drinks'?'active':'' %>">🥤 Drinks</a>
+        <a href="/products?category=icecream&search=<%= search %>" class="<%= category==='icecream'?'active':'' %>">🍨 Ice Cream</a>
+        <a href="/products?category=dessert&search=<%= search %>" class="<%= category==='dessert'?'active':'' %>">🍰 Dessert</a>
+        <a href="/products?category=southindian&search=<%= search %>" class="<%= category==='southindian'?'active':'' %>">🍲 South Indian</a>
+    </div>
+
+    <!-- SEARCH -->
+    <form action="/products" method="GET" class="search-container">
+        <input type="text" name="search" placeholder="Search food..." value="<%= search %>">
+        <input type="hidden" name="category" value="<%= category %>">
+        <button type="submit">Search</button>
+    </form>
+
+</div>
+
+
+<!-- ================= PRODUCT GRID ================= -->
+
+<div class="container">
+
+<% if (foodItems && foodItems.length > 0) { %>
+
+    <% foodItems.forEach(food => { %>
+
+        <div class="card">
+
+            <img src="<%= food.image %>" 
+                 alt="<%= food.name %>" 
+                 class="food-img">
+
+            <h3><%= food.name %></h3>
+
+            <!-- ✅ DESCRIPTION ADDED -->
+            <p class="food-description">
+                <%= food.description 
+                    ? food.description 
+                    : "Delicious freshly prepared food made with quality ingredients." %>
+            </p>
+
+            <p class="price">₹ <%= food.price %></p>
+
+            <button class="cart-btn"
+                    data-name="<%= food.name %>"
+                    data-price="<%= food.price %>"
+                    data-image="<%= food.image %>">
+                Add To Cart 🛒
+            </button>
+
+        </div>
+
+    <% }) %>
+
+<% } else { %>
+
+    <p>No food items found.</p>
+
+<% } %>
+
+</div>
+
+
+<!-- ================= PAGINATION ================= -->
+
+<div class="pagination">
+<% for(let i = 1; i <= totalPages; i++){ %>
+    <a href="/products?page=<%= i %>&category=<%= category %>&search=<%= search %>"
+       class="<%= currentPage === i ? 'active' : '' %>">
+       <%= i %>
+    </a>
+<% } %>
+</div>
+
+
+<!-- ================= ADD TO CART SCRIPT ================= -->
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+    const buttons = document.querySelectorAll(".cart-btn");
+
+    buttons.forEach(btn => {
+        btn.addEventListener("click", () => {
+
+            const item = {
+                name: btn.dataset.name,
+                price: btn.dataset.price,
+                image: btn.dataset.image
+            };
+
+            fetch("/products/add-to-cart", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(item)
+            })
+            .then(res => res.json())
+            .then(data => {
+
+                if (data.success) {
+                    alert(`✅ Added to cart! Total items: ${data.cartCount}, Total ₹${data.totalPrice}`);
+                } else {
+                    alert("❌ Login required");
+                    window.location.href = "/login";
+                }
+
+            })
+            .catch(err => console.error("Error:", err));
+        });
+    });
+
+});
+</script>
+
+<%- include('partials/footer') %>
+
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Signup - FullStack Cafe</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        /* ... Your existing CSS remains the same ... */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { min-height: 100vh; background: linear-gradient(135deg, #141e30, #243b55); display: block; }
+        .signup-wrapper { display: flex; justify-content: center; align-items: center; min-height: calc(100vh - 80px); padding: 20px; }
+        .form-box { width: 400px; padding: 40px; border-radius: 15px; background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(12px); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); text-align: center; animation: fadeIn 0.8s ease; }
+        .form-box h2 { color: white; margin-bottom: 25px; font-size: 28px; letter-spacing: 1px; }
+        .form-box input { width: 100%; padding: 13px; margin: 10px 0; border: none; border-radius: 8px; outline: none; font-size: 15px; background: #f1f1f1; transition: 0.3s; }
+        .form-box input:focus { box-shadow: 0 0 10px #ffd369; transform: scale(1.02); }
+        .form-box button { width: 100%; padding: 13px; margin-top: 15px; border: none; border-radius: 8px; background: linear-gradient(45deg, #ff7e5f, #feb47b); color: white; font-size: 16px; cursor: pointer; transition: 0.3s; }
+        .form-box button:hover { transform: scale(1.05); box-shadow: 0 6px 18px rgba(255, 126, 95, 0.6); }
+        .form-box a { display: inline-block; margin-top: 15px; color: #ffd369; text-decoration: none; font-weight: bold; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <%- include('partials/header') %>
+
+    <div class="signup-wrapper">
+        <div class="form-box">
+            <h2>Signup</h2>
+
+            <form action="/signup" method="POST">
+                <input type="text" name="name" required placeholder="Full Name">
+                
+                <input type="email" name="email" required placeholder="Email Address">
+                
+                <input type="password" name="password" required placeholder="Password">
+                
+                <button type="submit">Create Account</button>
+            </form>
+
+            <a href="/login">Already have an account? Login</a>
+        </div>
+    </div>
+
+</body>
+</html>
