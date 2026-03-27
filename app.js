@@ -38,8 +38,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 /* ================= STATIC FILES ================= */
+// 1. Serve everything in public (css, js, etc.)
 app.use(express.static(path.join(__dirname, "public")));
+
+// 2. Explicitly serve the uploads folder so /uploads/image.jpg works
 app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
+
+// 3. Fallback: If your DB stores JUST the filename (burger.jpeg), 
+// this allows the browser to find it even if the 'uploads' prefix is missing.
+app.use(express.static(path.join(__dirname, "public/uploads")));
 
 /* ================= SESSION ================= */
 app.use(session({
@@ -52,7 +59,8 @@ app.use(session({
     }),
     cookie: {
         maxAge: 1000 * 60 * 60 * 24,
-        httpOnly: true
+        httpOnly: true,
+        secure: false // Set to true if using HTTPS on Render
     }
 }));
 
@@ -96,7 +104,9 @@ app.use("/admin", require("./routes/adminroute"));
 app.use("/cart", require("./routes/cartRoutes"));
 
 /* ================= ERROR HANDLERS ================= */
-app.use((req, res) => res.status(404).render("error", { message: "Page Not Found" }));
+app.use((req, res) => {
+    res.status(404).render("error", { message: "Page Not Found" });
+});
 
 app.use((err, req, res, next) => {
     console.error("Server Error:", err);
