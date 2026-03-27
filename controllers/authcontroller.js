@@ -7,16 +7,15 @@ const nodemailer = require("nodemailer");
 const SECRET_KEY = process.env.SECRET_KEY || "supersecretkey";
 
 // --- ULTIMATE Nodemailer Transporter Configuration ---
-// Designed to fix ENETUNREACH and ETIMEDOUT errors on Render
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 587,
     secure: false, 
     auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS // Use the 16-digit App Password
+        pass: process.env.EMAIL_PASS // Use your 16-digit App Password here
     },
-    family: 4, // CRITICAL: Forces IPv4 to bypass Render's network routing issues
+    family: 4, // CRITICAL: Forces IPv4 to bypass Render's network timeout errors
     connectionTimeout: 10000, 
     greetingTimeout: 10000,
     tls: {
@@ -121,7 +120,7 @@ const requireAdmin = (req, res, next) => {
     next();
 };
 
-/* ================= 4. SIGNUP (FIXED & RESILIENT) ================= */
+/* ================= 4. SIGNUP (FIXED) ================= */
 const signup = async (req, res) => {
     try {
         let { name, email, password } = req.body;
@@ -136,8 +135,9 @@ const signup = async (req, res) => {
             return res.status(400).json({ success: false, message: "Email already registered." });
         }
 
+        // --- 10 MINUTE VALIDATION LOGIC ---
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const otpExpires = Date.now() + 10 * 60 * 1000;
+        const otpExpires = Date.now() + 10 * 60 * 1000; // Current time + 10 mins
         const hashedPassword = await bcrypt.hash(password, 10);
 
         if (existingUser && !existingUser.isVerified) {
@@ -160,23 +160,22 @@ const signup = async (req, res) => {
         }
 
         // --- NON-BLOCKING BACKGROUND EMAIL ---
-        // We do not 'await' this. This ensures the user gets a response 
-        // immediately even if Gmail is slow to respond.
+        // This stops the page from timing out/showing errors to the user
         transporter.sendMail({
             from: `"FullStack Cafe" <${process.env.EMAIL_USER}>`,
             to: email,
             subject: "Verify your FullStack Cafe Account",
-            html: `<h3>Your OTP is: ${otp}</h3>`
+            html: `<h3>Your OTP is: ${otp}</h3><p>Valid for 10 minutes.</p>`
         }).then(() => {
             console.log("OTP Email sent successfully to:", email);
         }).catch(e => {
-            console.error("Nodemailer Background Error:", e.message);
+            console.error("Email failed in background:", e.message);
         });
 
-        // Always return success if the database save was successful
+        // Always respond success to the browser immediately
         return res.json({ 
             success: true, 
-            message: "Registration successful! Please check your email for the OTP.", 
+            message: "OTP sent! Please check your email.", 
             email 
         });
 
@@ -194,6 +193,7 @@ const verifyOTP = async (req, res) => {
 
         if (!user) return res.status(404).json({ success: false, message: "User not found." });
 
+        // Checks if OTP matches AND if current time is less than expiration time
         if (user.otp !== otp || user.otpExpires < Date.now()) {
             return res.status(400).json({ success: false, message: "Invalid or expired OTP." });
         }
