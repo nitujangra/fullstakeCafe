@@ -6,21 +6,21 @@ const nodemailer = require("nodemailer");
 
 const SECRET_KEY = process.env.SECRET_KEY || "supersecretkey";
 
-// --- ULTIMATE Nodemailer Transporter Configuration ---
+// --- UPDATED: Secure Port 465 Configuration for Render ---
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, 
+    port: 465, // Direct SSL port
+    secure: true, // Required for port 465
     auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS // Use your 16-digit App Password here
+        pass: process.env.EMAIL_PASS // Ensure this is your 16-digit App Password
     },
-    family: 4, // CRITICAL: Forces IPv4 to bypass Render's network timeout errors
-    connectionTimeout: 10000, 
-    greetingTimeout: 10000,
+    family: 4, // Forces IPv4
+    connectionTimeout: 20000, // Increased to 20s for Render
+    greetingTimeout: 20000,
+    socketTimeout: 20000,
     tls: {
-        rejectUnauthorized: false, 
-        minVersion: 'TLSv1.2'
+        rejectUnauthorized: false // Prevents certificate issues on cloud servers
     }
 });
 
@@ -58,7 +58,7 @@ const proceedToLogin = async (user, req, res) => {
     return res.json({ success: true, redirectUrl });
 };
 
-/* ================= 1. CHECK AUTH ================= */
+/* ================= AUTH MIDDLEWARES ================= */
 const checkAuth = async (req, res, next) => {
     try {
         const token = req.cookies?.token;
@@ -88,7 +88,6 @@ const checkAuth = async (req, res, next) => {
     }
 };
 
-/* ================= 2. REQUIRE AUTH ================= */
 const requireAuth = async (req, res, next) => {
     try {
         if (req.user) return next();
@@ -112,7 +111,6 @@ const requireAuth = async (req, res, next) => {
     }
 };
 
-/* ================= 3. REQUIRE ADMIN ================= */
 const requireAdmin = (req, res, next) => {
     if (!req.user || req.user.role !== "admin") {
         return res.redirect("/login");
@@ -120,7 +118,7 @@ const requireAdmin = (req, res, next) => {
     next();
 };
 
-/* ================= 4. SIGNUP (FIXED) ================= */
+/* ================= SIGNUP & OTP LOGIC ================= */
 const signup = async (req, res) => {
     try {
         let { name, email, password } = req.body;
@@ -135,9 +133,8 @@ const signup = async (req, res) => {
             return res.status(400).json({ success: false, message: "Email already registered." });
         }
 
-        // --- 10 MINUTE VALIDATION LOGIC ---
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const otpExpires = Date.now() + 10 * 60 * 1000; // Current time + 10 mins
+        const otpExpires = Date.now() + 10 * 60 * 1000; 
         const hashedPassword = await bcrypt.hash(password, 10);
 
         if (existingUser && !existingUser.isVerified) {
@@ -159,20 +156,24 @@ const signup = async (req, res) => {
             await newUser.save();
         }
 
-        // --- NON-BLOCKING BACKGROUND EMAIL ---
-        // This stops the page from timing out/showing errors to the user
+        // Background email sending
         transporter.sendMail({
             from: `"FullStack Cafe" <${process.env.EMAIL_USER}>`,
             to: email,
             subject: "Verify your FullStack Cafe Account",
-            html: `<h3>Your OTP is: ${otp}</h3><p>Valid for 10 minutes.</p>`
+            html: `
+                <div style="font-family: Arial, sans-serif; color: #333;">
+                    <h2>Welcome to FullStack Cafe!</h2>
+                    <p>Your verification code is: <b style="font-size: 1.5em; color: #4a3728;">${otp}</b></p>
+                    <p>This code will expire in 10 minutes.</p>
+                </div>
+            `
         }).then(() => {
             console.log("OTP Email sent successfully to:", email);
         }).catch(e => {
-            console.error("Email failed in background:", e.message);
+            console.error("CRITICAL: Nodemailer error:", e.message);
         });
 
-        // Always respond success to the browser immediately
         return res.json({ 
             success: true, 
             message: "OTP sent! Please check your email.", 
@@ -185,7 +186,6 @@ const signup = async (req, res) => {
     }
 };
 
-/* ================= 5. VERIFY OTP ================= */
 const verifyOTP = async (req, res) => {
     try {
         const { email, otp } = req.body;
@@ -193,7 +193,6 @@ const verifyOTP = async (req, res) => {
 
         if (!user) return res.status(404).json({ success: false, message: "User not found." });
 
-        // Checks if OTP matches AND if current time is less than expiration time
         if (user.otp !== otp || user.otpExpires < Date.now()) {
             return res.status(400).json({ success: false, message: "Invalid or expired OTP." });
         }
@@ -209,7 +208,7 @@ const verifyOTP = async (req, res) => {
     }
 };
 
-/* ================= 6. LOGIN ================= */
+/* ================= LOGIN & LOGOUT ================= */
 const login = async (req, res) => {
     try {
         let { email, password } = req.body;
@@ -228,7 +227,8 @@ const login = async (req, res) => {
             return res.status(403).json({ 
                 success: false, 
                 message: "Please verify your email before logging in.",
-                isUnverified: true 
+                isUnverified: true,
+                email: user.email // Send email back so frontend can redirect to verify-otp
             });
         }
 
@@ -240,7 +240,6 @@ const login = async (req, res) => {
     }
 };
 
-/* ================= 7. LOGOUT ================= */
 const logout = (req, res) => {
     res.clearCookie("token");
     res.redirect("/products");
