@@ -3,29 +3,30 @@ const Cart = require("../models/Cart");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
-const dns = require('dns'); // Required to force IPv4
 
 const SECRET_KEY = process.env.SECRET_KEY || "supersecretkey";
 
-// --- ULTIMATE IPv4 FORCED CONFIGURATION ---
+/* ================= MAIL CONFIG (FIXED) ================= */
 const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, 
+    host: "smtp.gmail.com",
+    port: 587, // ✅ use 587 instead of 465
+    secure: false, // ❗ VERY IMPORTANT
     auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS 
+        pass: process.env.EMAIL_PASS
     },
-    // This is the "Magic Fix": It forces the DNS to resolve ONLY to IPv4
-    lookup: (hostname, options, callback) => {
-        dns.lookup(hostname, { family: 4 }, callback);
-    },
-    connectionTimeout: 45000, 
-    greetingTimeout: 45000,
-    socketTimeout: 45000,
+    family: 4, // ✅ FORCE IPv4 (REAL FIX)
     tls: {
-        rejectUnauthorized: false,
-        servername: 'smtp.gmail.com'
+        rejectUnauthorized: false
+    }
+});
+
+/* ================= VERIFY SMTP CONNECTION ================= */
+transporter.verify((error, success) => {
+    if (error) {
+        console.error("❌ SMTP ERROR:", error);
+    } else {
+        console.log("✅ SMTP Server is ready to send emails");
     }
 });
 
@@ -33,6 +34,7 @@ const transporter = nodemailer.createTransport({
 const proceedToLogin = async (user, req, res) => {
     if (req.session.cart && req.session.cart.length > 0) {
         let userCart = await Cart.findOne({ user: user._id });
+
         if (!userCart) {
             userCart = new Cart({ user: user._id, items: req.session.cart });
         } else {
@@ -42,6 +44,7 @@ const proceedToLogin = async (user, req, res) => {
                 else userCart.items.push(sessionItem);
             });
         }
+
         await userCart.save();
         req.session.cart = [];
     }
@@ -67,11 +70,13 @@ const proceedToLogin = async (user, req, res) => {
 const checkAuth = async (req, res, next) => {
     try {
         const token = req.cookies?.token;
+
         if (!token) {
             req.user = null;
             res.locals.user = null;
             return next();
         }
+
         const decoded = jwt.verify(token, SECRET_KEY);
         const user = await User.findById(decoded.id).select("-password");
 
@@ -85,6 +90,7 @@ const checkAuth = async (req, res, next) => {
         req.user = user;
         res.locals.user = user;
         next();
+
     } catch (err) {
         res.clearCookie("token");
         req.user = null;
@@ -96,6 +102,7 @@ const checkAuth = async (req, res, next) => {
 const requireAuth = async (req, res, next) => {
     try {
         if (req.user) return next();
+
         const token = req.cookies?.token;
         if (!token) return res.redirect("/login");
 
@@ -110,6 +117,7 @@ const requireAuth = async (req, res, next) => {
         req.user = user;
         res.locals.user = user;
         next();
+
     } catch (err) {
         res.clearCookie("token");
         return res.redirect("/login");
@@ -123,23 +131,26 @@ const requireAdmin = (req, res, next) => {
     next();
 };
 
-/* ================= SIGNUP & OTP LOGIC ================= */
+/* ================= SIGNUP & OTP LOGIC (FIXED) ================= */
 const signup = async (req, res) => {
     try {
         let { name, email, password } = req.body;
+
         if (!name || !email || !password) {
             return res.status(400).json({ success: false, message: "All fields are required." });
         }
 
         email = email.trim().toLowerCase();
+
         const existingUser = await User.findOne({ email });
-        
+
         if (existingUser && existingUser.isVerified) {
             return res.status(400).json({ success: false, message: "Email already registered." });
         }
 
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const otpExpires = Date.now() + 10 * 60 * 1000; 
+        const otpExpires = Date.now() + 10 * 60 * 1000;
+
         const hashedPassword = await bcrypt.hash(password, 10);
 
         if (existingUser && !existingUser.isVerified) {
@@ -161,43 +172,55 @@ const signup = async (req, res) => {
             await newUser.save();
         }
 
-        // Background email sending
-        transporter.sendMail({
-            from: `"FullStack Cafe" <${process.env.EMAIL_USER}>`,
-            to: email,
-            subject: "Verify your FullStack Cafe Account",
-            html: `
-                <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-                    <h2 style="color: #4a3728;">FullStack Cafe</h2>
-                    <p>Verify your account with the code below:</p>
-                    <h1 style="background: #f4f4f4; padding: 15px; text-align: center; color: #d4a373;">${otp}</h1>
-                    <p style="color: #666; font-size: 12px;">This code expires in 10 minutes.</p>
-                </div>
-            `
-        }).then(() => {
-            console.log("OTP Email sent successfully to:", email);
-        }).catch(e => {
-            console.error("CRITICAL: Nodemailer error:", e.message);
-        });
+        /* ===== SEND OTP EMAIL (FIXED) ===== */
+        try {
+            const info = await transporter.sendMail({
+                from: `"FullStack Cafe" <${process.env.EMAIL_USER}>`,
+                to: email,
+                subject: "Verify your FullStack Cafe Account",
+                html: `
+                    <div style="font-family: Arial; padding: 20px;">
+                        <h2>FullStack Cafe</h2>
+                        <p>Your OTP is:</p>
+                        <h1>${otp}</h1>
+                        <p>Expires in 10 minutes</p>
+                    </div>
+                `
+            });
 
-        return res.json({ 
-            success: true, 
-            message: "OTP sent! Please check your email.", 
-            email 
-        });
+            console.log("✅ OTP sent:", info.response);
+
+            return res.json({
+                success: true,
+                message: "OTP sent successfully",
+                email
+            });
+
+        } catch (emailError) {
+            console.error("❌ EMAIL ERROR:", emailError);
+
+            return res.status(500).json({
+                success: false,
+                message: "Failed to send OTP. Check email configuration."
+            });
+        }
 
     } catch (err) {
-        console.error("Signup DB Error:", err);
+        console.error("❌ Signup Error:", err);
         res.status(500).json({ success: false, message: "Error creating account." });
     }
 };
 
+/* ================= VERIFY OTP ================= */
 const verifyOTP = async (req, res) => {
     try {
         const { email, otp } = req.body;
+
         const user = await User.findOne({ email: email.toLowerCase() });
 
-        if (!user) return res.status(404).json({ success: false, message: "User not found." });
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found." });
+        }
 
         if (user.otp !== otp || user.otpExpires < Date.now()) {
             return res.status(400).json({ success: false, message: "Invalid or expired OTP." });
@@ -206,23 +229,27 @@ const verifyOTP = async (req, res) => {
         user.isVerified = true;
         user.otp = undefined;
         user.otpExpires = undefined;
+
         await user.save();
 
-        res.json({ success: true, message: "Verified!" });
+        res.json({ success: true, message: "Verified successfully!" });
+
     } catch (err) {
         res.status(500).json({ success: false, message: "Verification error." });
     }
 };
 
-/* ================= LOGIN & LOGOUT ================= */
+/* ================= LOGIN ================= */
 const login = async (req, res) => {
     try {
         let { email, password } = req.body;
+
         if (!email || !password) {
             return res.status(400).json({ success: false, message: "Provide email and password." });
         }
 
         email = email.trim().toLowerCase();
+
         const user = await User.findOne({ email });
 
         if (!user || !(await bcrypt.compare(password, user.password))) {
@@ -230,11 +257,11 @@ const login = async (req, res) => {
         }
 
         if (!user.isVerified && user.role !== "admin") {
-            return res.status(403).json({ 
-                success: false, 
-                message: "Please verify your email before logging in.",
+            return res.status(403).json({
+                success: false,
+                message: "Please verify your email first.",
                 isUnverified: true,
-                email: user.email 
+                email: user.email
             });
         }
 
@@ -246,6 +273,7 @@ const login = async (req, res) => {
     }
 };
 
+/* ================= LOGOUT ================= */
 const logout = (req, res) => {
     res.clearCookie("token");
     res.redirect("/products");
