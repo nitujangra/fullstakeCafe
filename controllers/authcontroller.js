@@ -6,12 +6,21 @@ const nodemailer = require("nodemailer");
 
 const SECRET_KEY = process.env.SECRET_KEY || "supersecretkey";
 
-// --- Nodemailer Transporter Configuration ---
+// --- FIXED Nodemailer Transporter Configuration ---
 const transporter = nodemailer.createTransport({
     service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // true for 465, false for other ports
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
+    },
+    // Fix for Render's IPv6 connectivity issues (ENETUNREACH)
+    family: 4, 
+    tls: {
+        // Helps avoid handshake issues on some cloud servers
+        rejectUnauthorized: false 
     }
 });
 
@@ -111,7 +120,7 @@ const requireAdmin = (req, res, next) => {
     next();
 };
 
-/* ================= 4. SIGNUP (FIXED EMAIL LOGIC) ================= */
+/* ================= 4. SIGNUP (FIXED EMAIL ERROR HANDLING) ================= */
 const signup = async (req, res) => {
     try {
         let { name, email, password } = req.body;
@@ -120,8 +129,6 @@ const signup = async (req, res) => {
         }
 
         email = email.trim().toLowerCase();
-        
-        // CHECK: Does the user exist and is already verified?
         const existingUser = await User.findOne({ email });
         
         if (existingUser && existingUser.isVerified) {
@@ -133,14 +140,12 @@ const signup = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         if (existingUser && !existingUser.isVerified) {
-            // FIX: If unverified user exists, update their data and send new OTP
             existingUser.name = name.trim();
             existingUser.password = hashedPassword;
             existingUser.otp = otp;
             existingUser.otpExpires = otpExpires;
             await existingUser.save();
         } else {
-            // New user entirely
             const newUser = new User({
                 name: name.trim(),
                 email,
@@ -153,17 +158,28 @@ const signup = async (req, res) => {
             await newUser.save();
         }
 
-        await transporter.sendMail({
-            from: `"FullStack Cafe" <${process.env.EMAIL_USER}>`,
-            to: email,
-            subject: "Verify your FullStack Cafe Account",
-            html: `<h3>Your OTP is: ${otp}</h3>`
-        });
-
-        res.json({ success: true, message: "OTP sent!", email });
+        // --- FIXED: Send email inside nested try/catch ---
+        // This ensures that even if the email service fails, the page doesn't hang forever
+        try {
+            await transporter.sendMail({
+                from: `"FullStack Cafe" <${process.env.EMAIL_USER}>`,
+                to: email,
+                subject: "Verify your FullStack Cafe Account",
+                html: `<h3>Your OTP is: ${otp}</h3>`
+            });
+            res.json({ success: true, message: "OTP sent!", email });
+        } catch (emailErr) {
+            console.error("Nodemailer Error:", emailErr);
+            // Even if email fails, we tell the user to try checking their mail 
+            // or provide a specific error so they know it's a mail issue.
+            res.status(500).json({ 
+                success: false, 
+                message: "User saved, but failed to send OTP email. Please check your email settings." 
+            });
+        }
 
     } catch (err) {
-        console.error("Signup Error:", err);
+        console.error("Signup DB Error:", err);
         res.status(500).json({ success: false, message: "Error creating account." });
     }
 };
