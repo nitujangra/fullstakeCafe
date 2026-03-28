@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Signup - FullStack Cafe</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
     <style>
-        /* ================= RESET & BASE ================= */
         * {
             margin: 0;
             padding: 0;
@@ -16,8 +16,7 @@
 
         body {
             min-height: 100vh;
-            background: #fdfcfb; 
-            background-image: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%);
+            background: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%);
             display: flex;
             flex-direction: column;
             color: #333;
@@ -25,12 +24,10 @@
 
         header {
             width: 100%;
-            z-index: 10;
-            background: #ffffff;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            background: #fff;
+            border-bottom: 1px solid #e2e8f0;
         }
 
-        /* ================= CENTER CONTAINER ================= */
         .signup-wrapper {
             flex: 1;
             display: flex;
@@ -38,260 +35,160 @@
             align-items: center;
             padding: 40px 20px;
         }
-        /* ================= FORCE HEADER VISIBILITY ================= */
-header {
-    width: 100%;
-    background: #ffffff !important; /* Force solid white */
-    border-bottom: 1px solid #e2e8f0 !important; /* Light gray bottom border */
-    padding: 15px 0 !important;
-    position: relative;
-    z-index: 1000;
-}
 
-/* Target the Logo */
-header a, 
-header .logo, 
-header .brand-name {
-    color: #4a3728 !important; /* Deep Coffee Brown */
-    text-decoration: none !important;
-    font-weight: 700 !important;
-}
-
-/* Target all Navigation Links (Menu, Login, Signup) */
-header .nav-link, 
-header nav a, 
-header ul li a {
-    color: #2d3748 !important; /* Dark Slate Gray */
-    font-weight: 500 !important;
-    text-decoration: none !important;
-    margin: 0 15px !important;
-    transition: color 0.2s !important;
-}
-
-header .nav-link:hover, 
-header nav a:hover {
-    color: #d4a373 !important; /* Tan/Latte color on hover */
-}
-
-/* Target the Cart text and Icon */
-header .cart-link, 
-header .cart-icon,
-header #cart-count {
-    color: #2d3748 !important;
-}
-
-/* If you have a user profile name showing */
-header .user-name {
-    color: #4a3728 !important;
-    font-weight: 600 !important;
-}
-
-        /* ================= FORM BOX ================= */
         .form-box {
             width: 100%;
             max-width: 420px;
             padding: 40px;
             border-radius: 20px;
-            background: #ffffff;
+            background: #fff;
             border: 1px solid #eee;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
             text-align: center;
-            animation: fadeIn 0.6s ease-out;
         }
 
         .form-box h2 {
-            color: #4a3728; 
+            color: #4a3728;
             margin-bottom: 8px;
-            font-size: 30px;
-            font-weight: 700;
+            font-size: 28px;
         }
 
-        .form-box p.subtitle {
+        .subtitle {
             color: #8c7e74;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             font-size: 14px;
         }
 
-        /* ================= NOTIFICATION BOX ================= */
         .msg {
             padding: 12px;
             border-radius: 10px;
             font-size: 14px;
-            margin-bottom: 20px;
-            display: none; 
-            font-weight: 500;
+            margin-bottom: 15px;
+            display: none;
         }
 
         .msg.error {
             display: block;
             background: #fff5f5;
             color: #c53030;
-            border: 1px solid #feb2b2;
-            animation: shake 0.5s ease;
         }
 
-        /* ================= INPUTS ================= */
-        .form-group {
-            margin-bottom: 15px;
+        .msg.success {
+            display: block;
+            background: #f0fff4;
+            color: #2f855a;
         }
 
         .form-box input {
             width: 100%;
-            padding: 14px 18px;
+            padding: 14px;
             border: 2px solid #edf2f7;
-            border-radius: 12px;
-            outline: none;
-            font-size: 15px;
-            background: #f8fafc;
-            color: #2d3748;
-            transition: all 0.3s ease;
+            border-radius: 10px;
+            margin-bottom: 12px;
         }
 
-        .form-box input:focus {
-            border-color: #d4a373;
-            background: #fff;
-            box-shadow: 0 0 0 4px rgba(212, 163, 115, 0.1);
-        }
-
-        /* ================= BUTTON ================= */
         .form-box button {
             width: 100%;
             padding: 14px;
-            margin-top: 10px;
             border: none;
-            border-radius: 12px;
-            background: #4a3728; 
-            color: #ffffff;
+            border-radius: 10px;
+            background: #4a3728;
+            color: white;
             font-size: 16px;
-            font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .form-box button:hover {
-            background: #5d4636;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(74, 55, 40, 0.2);
         }
 
         .form-box button:disabled {
-            background: #a89a8e;
+            background: #aaa;
             cursor: not-allowed;
         }
 
-        /* ================= FOOTER LINKS ================= */
         .footer-links {
-            margin-top: 25px;
-            color: #718096;
+            margin-top: 20px;
             font-size: 14px;
         }
 
-        .form-box a {
+        .footer-links a {
             color: #d4a373;
             text-decoration: none;
-            font-weight: 600;
-        }
-
-        .form-box a:hover {
-            text-decoration: underline;
-        }
-
-        /* ================= ANIMATIONS ================= */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
         }
     </style>
 </head>
+
 <body>
 
-    <header>
-        <%- include('partials/header') %>
-    </header>
+<header>
+    <%- include('partials/header') %>
+</header>
 
-    <div class="signup-wrapper">
-        <div class="form-box">
-            <h2>Create Account</h2>
-            <p class="subtitle">Join the FullStack Cafe community</p>
-            
-            <div id="message-container" class="msg"></div>
+<div class="signup-wrapper">
+    <div class="form-box">
+        <h2>Create Account</h2>
+        <p class="subtitle">Join the FullStack Cafe community</p>
 
-            <form id="signupForm">
-                <div class="form-group">
-                    <input type="text" name="name" placeholder="Full Name" required>
-                </div>
-                
-                <div class="form-group">
-                    <input type="email" name="email" placeholder="Email Address" required>
-                </div>
-                
-                <div class="form-group">
-                    <input type="password" name="password" placeholder="Password" required>
-                </div>
-                
-                <button type="submit" id="submitBtn">Create Account</button>
-            </form>
+        <div id="message-container" class="msg"></div>
 
-            <div class="footer-links">
-                Already have an account? <a href="/login">Login</a>
-            </div>
+        <form id="signupForm">
+            <input type="text" name="name" placeholder="Full Name" required>
+            <input type="email" name="email" placeholder="Email Address" required>
+            <input type="password" name="password" placeholder="Password" required>
+            <button type="submit" id="submitBtn">Create Account</button>
+        </form>
+
+        <div class="footer-links">
+            Already have an account? <a href="/login">Login</a>
         </div>
     </div>
+</div>
 
-    <script>
-        const signupForm = document.getElementById('signupForm');
-        const msgDiv = document.getElementById('message-container');
-        const submitBtn = document.getElementById('submitBtn');
+<script>
+const signupForm = document.getElementById('signupForm');
+const msgDiv = document.getElementById('message-container');
+const submitBtn = document.getElementById('submitBtn');
 
-        signupForm.addEventListener('submit', async (e) => {
-            e.preventDefault(); 
+signupForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
 
-            // Disable button
-            submitBtn.innerText = "Creating...";
-            submitBtn.disabled = true;
+    submitBtn.innerText = "Creating...";
+    submitBtn.disabled = true;
 
-            // Reset messages
-            msgDiv.style.display = 'none';
-            msgDiv.innerText = '';
-            msgDiv.classList.remove('error');
+    msgDiv.style.display = 'none';
+    msgDiv.className = "msg";
 
-            const formData = new FormData(signupForm);
-            const data = Object.fromEntries(formData.entries());
+    const formData = new FormData(signupForm);
+    const data = Object.fromEntries(formData.entries());
 
-            try {
-                const response = await fetch('/signup', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    // Redirect to verification or success page
-                    // Based on your controller, it expects to go to verify-otp
-                    window.location.href = "/verify-otp?email=" + encodeURIComponent(result.email);
-                } else {
-                    msgDiv.innerText = result.message || "Signup failed";
-                    msgDiv.style.display = 'block';
-                    msgDiv.classList.add('error');
-                    submitBtn.innerText = "Create Account";
-                    submitBtn.disabled = false;
-                }
-            } catch (err) {
-                msgDiv.innerText = "Connection error. Please try again.";
-                msgDiv.style.display = 'block';
-                msgDiv.classList.add('error');
-                submitBtn.innerText = "Create Account";
-                submitBtn.disabled = false;
-            }
+    try {
+        const response = await fetch('/signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
         });
-    </script>
+
+        const result = await response.json();
+
+        if (result.success) {
+            msgDiv.innerText = "OTP sent successfully! Redirecting...";
+            msgDiv.classList.add('success');
+
+            setTimeout(() => {
+                window.location.href = "/verify-otp?email=" + encodeURIComponent(result.email);
+            }, 1500);
+
+        } else {
+            msgDiv.innerText = result.message || "Signup failed";
+            msgDiv.classList.add('error');
+        }
+
+    } catch (err) {
+        msgDiv.innerText = "Server error. Please try again.";
+        msgDiv.classList.add('error');
+    }
+
+    submitBtn.innerText = "Create Account";
+    submitBtn.disabled = false;
+});
+</script>
+
 </body>
 </html>

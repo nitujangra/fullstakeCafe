@@ -6,31 +6,52 @@ const nodemailer = require("nodemailer");
 
 const SECRET_KEY = process.env.SECRET_KEY || "supersecretkey";
 
-/* ================= MAIL CONFIG (FIXED) ================= */
+/* ================= BREVO SMTP CONFIG ================= */
 const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587, // ✅ use 587 instead of 465
-    secure: false, // ❗ VERY IMPORTANT
+    host: "smtp-relay.brevo.com",
+    port: 587,
+    secure: false,
     auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    },
-    family: 4, // ✅ FORCE IPv4 (REAL FIX)
-    tls: {
-        rejectUnauthorized: false
+        user: process.env.BREVO_USER,
+        pass: process.env.BREVO_PASS
     }
 });
 
-/* ================= VERIFY SMTP CONNECTION ================= */
-transporter.verify((error, success) => {
+/* ================= VERIFY SMTP ================= */
+transporter.verify((error) => {
     if (error) {
         console.error("❌ SMTP ERROR:", error);
     } else {
-        console.log("✅ SMTP Server is ready to send emails");
+        console.log("✅ Brevo SMTP is ready");
     }
 });
 
-/* ================= HELPER: COMPLETE LOGIN PROCESS ================= */
+/* ================= SEND OTP EMAIL ================= */
+const sendOTPEmail = async (email, otp) => {
+    try {
+        const info = await transporter.sendMail({
+            from: `"FullStack Cafe" <nitujangra033@gmail.com>`,
+            to: email,
+            subject: "Verify your FullStack Cafe Account",
+            html: `
+                <div style="font-family: Arial; padding: 20px;">
+                    <h2>FullStack Cafe</h2>
+                    <p>Your OTP is:</p>
+                    <h1>${otp}</h1>
+                    <p>Expires in 10 minutes</p>
+                </div>
+            `
+        });
+
+        console.log("✅ OTP sent:", info.response);
+
+    } catch (error) {
+        console.error("❌ EMAIL ERROR:", error.message);
+        throw error;
+    }
+};
+
+/* ================= HELPER LOGIN ================= */
 const proceedToLogin = async (user, req, res) => {
     if (req.session.cart && req.session.cart.length > 0) {
         let userCart = await Cart.findOne({ user: user._id });
@@ -66,7 +87,7 @@ const proceedToLogin = async (user, req, res) => {
     return res.json({ success: true, redirectUrl });
 };
 
-/* ================= AUTH MIDDLEWARES ================= */
+/* ================= AUTH MIDDLEWARE ================= */
 const checkAuth = async (req, res, next) => {
     try {
         const token = req.cookies?.token;
@@ -91,7 +112,7 @@ const checkAuth = async (req, res, next) => {
         res.locals.user = user;
         next();
 
-    } catch (err) {
+    } catch {
         res.clearCookie("token");
         req.user = null;
         res.locals.user = null;
@@ -118,7 +139,7 @@ const requireAuth = async (req, res, next) => {
         res.locals.user = user;
         next();
 
-    } catch (err) {
+    } catch {
         res.clearCookie("token");
         return res.redirect("/login");
     }
@@ -131,7 +152,7 @@ const requireAdmin = (req, res, next) => {
     next();
 };
 
-/* ================= SIGNUP & OTP LOGIC (FIXED) ================= */
+/* ================= SIGNUP ================= */
 const signup = async (req, res) => {
     try {
         let { name, email, password } = req.body;
@@ -150,7 +171,6 @@ const signup = async (req, res) => {
 
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const otpExpires = Date.now() + 10 * 60 * 1000;
-
         const hashedPassword = await bcrypt.hash(password, 10);
 
         if (existingUser && !existingUser.isVerified) {
@@ -160,7 +180,7 @@ const signup = async (req, res) => {
             existingUser.otpExpires = otpExpires;
             await existingUser.save();
         } else {
-            const newUser = new User({
+            await new User({
                 name: name.trim(),
                 email,
                 password: hashedPassword,
@@ -168,42 +188,16 @@ const signup = async (req, res) => {
                 otp,
                 otpExpires,
                 isVerified: false
-            });
-            await newUser.save();
+            }).save();
         }
 
-        /* ===== SEND OTP EMAIL (FIXED) ===== */
-        try {
-            const info = await transporter.sendMail({
-                from: `"FullStack Cafe" <${process.env.EMAIL_USER}>`,
-                to: email,
-                subject: "Verify your FullStack Cafe Account",
-                html: `
-                    <div style="font-family: Arial; padding: 20px;">
-                        <h2>FullStack Cafe</h2>
-                        <p>Your OTP is:</p>
-                        <h1>${otp}</h1>
-                        <p>Expires in 10 minutes</p>
-                    </div>
-                `
-            });
+        await sendOTPEmail(email, otp);
 
-            console.log("✅ OTP sent:", info.response);
-
-            return res.json({
-                success: true,
-                message: "OTP sent successfully",
-                email
-            });
-
-        } catch (emailError) {
-            console.error("❌ EMAIL ERROR:", emailError);
-
-            return res.status(500).json({
-                success: false,
-                message: "Failed to send OTP. Check email configuration."
-            });
-        }
+        return res.json({
+            success: true,
+            message: "OTP sent successfully",
+            email
+        });
 
     } catch (err) {
         console.error("❌ Signup Error:", err);
@@ -234,7 +228,7 @@ const verifyOTP = async (req, res) => {
 
         res.json({ success: true, message: "Verified successfully!" });
 
-    } catch (err) {
+    } catch {
         res.status(500).json({ success: false, message: "Verification error." });
     }
 };
@@ -267,8 +261,7 @@ const login = async (req, res) => {
 
         return await proceedToLogin(user, req, res);
 
-    } catch (err) {
-        console.error(err);
+    } catch {
         res.status(500).json({ success: false, message: "Login error occurred." });
     }
 };
