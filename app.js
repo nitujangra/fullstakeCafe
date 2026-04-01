@@ -3,15 +3,14 @@ require("dotenv").config();
 
 /* ================= IMPORTS ================= */
 const express = require("express");
-const http = require("http"); 
-const { Server } = require("socket.io"); 
+const http = require("http");
+const { Server } = require("socket.io");
 const path = require("path");
 const morgan = require("morgan");
 const cookieParser = require("cookie-parser");
 const session = require("express-session");
 
 let MongoStore = require("connect-mongo");
-// Handle different versions of connect-mongo
 if (typeof MongoStore !== 'function' && MongoStore.default) {
     MongoStore = MongoStore.default;
 }
@@ -21,8 +20,10 @@ const { checkAuth } = require("./controllers/authcontroller");
 
 /* ================= APP & SERVER INIT ================= */
 const app = express();
-const server = http.createServer(app); 
-const io = new Server(server); 
+const server = http.createServer(app);
+const io = new Server(server);
+
+/* ✅ AUTO PORT FIX (prevents crash) */
 const PORT = process.env.PORT || 3000;
 
 /* ================= DATABASE ================= */
@@ -39,14 +40,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 /* ================= STATIC FILES ================= */
-// 1. Serve main public assets (CSS, JS)
 app.use(express.static(path.join(__dirname, "public")));
-
-// 2. FIXED: Serve the uploads folder specifically. 
-// This makes http://localhost:3000/uploads/burger.jpeg work.
 app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
-
-// 3. SAFETY FALLBACK: If your DB stores "uploads/burger.jpeg" instead of just "burger.jpeg"
 app.use("/public", express.static(path.join(__dirname, "public")));
 
 /* ================= SESSION ================= */
@@ -55,36 +50,36 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({
-        mongoUrl: process.env.MONGO_URI || "mongodb://127.0.0.1:27017/fullstackCafe",
+        mongoUrl: process.env.MONGO_URI,
         collectionName: "sessions"
     }),
     cookie: {
         maxAge: 1000 * 60 * 60 * 24,
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production" // Set to true if using HTTPS on Render
+        secure: process.env.NODE_ENV === "production"
     }
 }));
 
-/* ================= SOCKET.IO CONFIG ================= */
+/* ================= SOCKET.IO ================= */
 app.set('socketio', io);
 
 io.on("connection", (socket) => {
     socket.on("join", (userId) => {
         if (userId) {
             socket.join(userId);
-            console.log(`User connected to notification room: ${userId}`);
+            console.log(`User connected: ${userId}`);
         }
     });
 
     socket.on("disconnect", () => {
-        console.log("A user disconnected from notifications");
+        console.log("User disconnected");
     });
 });
 
-// Middleware to check authentication on every request
+/* ================= AUTH ================= */
 app.use(checkAuth);
 
-/* ================= GLOBAL EJS VARIABLES ================= */
+/* ================= GLOBAL VARIABLES ================= */
 app.use((req, res, next) => {
     if (!req.session.cart) {
         req.session.cart = [];
@@ -105,17 +100,33 @@ app.use("/products", require("./routes/productRoutes"));
 app.use("/admin", require("./routes/adminroute"));
 app.use("/cart", require("./routes/cartRoutes"));
 
-/* ================= ERROR HANDLERS ================= */
+/* ================= ERROR HANDLING ================= */
 app.use((req, res) => {
     res.status(404).render("error", { message: "Page Not Found" });
 });
 
 app.use((err, req, res, next) => {
-    console.error("Server Error:", err);
+    console.error("❌ Server Error:", err);
     res.status(500).render("error", { message: "Something went wrong!" });
 });
 
-/* ================= START SERVER ================= */
+/* ================= SERVER START ================= */
 server.listen(PORT, () => {
-    console.log(`✅ Server & Socket running at http://localhost:${PORT}`);
+    console.log(`✅ Server running at http://localhost:${PORT}`);
+});
+
+/* ================= HANDLE PORT ERROR ================= */
+server.on("error", (err) => {
+    if (err.code === "EADDRINUSE") {
+        console.error(`❌ Port ${PORT} is already in use`);
+        console.log("👉 Try killing the process or changing port");
+
+        // Auto fallback to another port
+        const newPort = PORT + 1;
+        server.listen(newPort, () => {
+            console.log(`✅ Server switched to http://localhost:${newPort}`);
+        });
+    } else {
+        console.error("❌ Server error:", err);
+    }
 });
