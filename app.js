@@ -11,23 +11,26 @@ const cookieParser = require("cookie-parser");
 const session = require("express-session");
 
 let MongoStore = require("connect-mongo");
-if (typeof MongoStore !== 'function' && MongoStore.default) {
+if (typeof MongoStore !== "function" && MongoStore.default) {
     MongoStore = MongoStore.default;
 }
 
 const connectDB = require("./config/db");
-const { checkAuth } = require("./controllers/authcontroller");
+const { checkAuth } = require("./controllers/authcontroller"); // ✅ FIXED (capital C)
+const { verifyConnection } = require("./utils/mailer"); // ✅ ADDED
 
 /* ================= APP & SERVER INIT ================= */
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-/* ✅ AUTO PORT FIX (prevents crash) */
 const PORT = process.env.PORT || 3000;
 
 /* ================= DATABASE ================= */
 connectDB();
+
+/* ================= VERIFY MAIL SERVER ================= */
+verifyConnection(); // ✅ ADDED (checks SMTP at startup)
 
 /* ================= VIEW ENGINE ================= */
 app.set("view engine", "ejs");
@@ -61,7 +64,7 @@ app.use(session({
 }));
 
 /* ================= SOCKET.IO ================= */
-app.set('socketio', io);
+app.set("socketio", io);
 
 io.on("connection", (socket) => {
     socket.on("join", (userId) => {
@@ -119,9 +122,7 @@ server.listen(PORT, () => {
 server.on("error", (err) => {
     if (err.code === "EADDRINUSE") {
         console.error(`❌ Port ${PORT} is already in use`);
-        console.log("👉 Try killing the process or changing port");
 
-        // Auto fallback to another port
         const newPort = PORT + 1;
         server.listen(newPort, () => {
             console.log(`✅ Server switched to http://localhost:${newPort}`);

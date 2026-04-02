@@ -1,53 +1,30 @@
+const { sendMail } = require("../utils/mailer"); // ✅ your own mailer
 const User = require('../models/User');
 const Cart = require("../models/Cart");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const nodemailer = require("nodemailer");
 
 const SECRET_KEY = process.env.SECRET_KEY || "supersecretkey";
-
-/* ================= BREVO SMTP CONFIG ================= */
-const transporter = nodemailer.createTransport({
-    host: "smtp-relay.brevo.com",
-    port: 587,
-    secure: false,
-    auth: {
-        user: process.env.BREVO_USER,
-        pass: process.env.BREVO_PASS
-    }
-});
-
-/* ================= VERIFY SMTP ================= */
-transporter.verify((error) => {
-    if (error) {
-        console.error("❌ SMTP ERROR:", error);
-    } else {
-        console.log("✅ Brevo SMTP is ready");
-    }
-});
 
 /* ================= SEND OTP EMAIL ================= */
 const sendOTPEmail = async (email, otp) => {
     try {
-        const info = await transporter.sendMail({
-            from: `"FullStack Cafe" <nitujangra033@gmail.com>`,
+        await sendMail({
             to: email,
             subject: "Verify your FullStack Cafe Account",
             html: `
-                <div style="font-family: Arial; padding: 20px;">
-                    <h2>FullStack Cafe</h2>
-                    <p>Your OTP is:</p>
-                    <h1>${otp}</h1>
-                    <p>Expires in 10 minutes</p>
-                </div>
+                <h2>Email Verification</h2>
+                <p>Your OTP is:</p>
+                <h1>${otp}</h1>
+                <p>This OTP will expire in 10 minutes.</p>
             `
         });
 
-        console.log("✅ OTP sent:", info.response);
+        console.log("✅ OTP email sent to:", email);
 
     } catch (error) {
-        console.error("❌ EMAIL ERROR:", error.message);
-        throw error;
+        console.error("❌ Error sending OTP:", error);
+        throw new Error("Email not sent");
     }
 };
 
