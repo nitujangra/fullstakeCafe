@@ -1,13 +1,18 @@
 require("dotenv").config();
 const nodemailer = require("nodemailer");
 
-/* ================= TRANSPORT ================= */
+/* ================= TRANSPORT (FIXED) ================= */
 const transporter = nodemailer.createTransport({
-    service: "gmail", // ✅ use your email provider (gmail recommended)
+    host: "smtp.gmail.com",   // ✅ use host instead of service
+    port: 587,                // ✅ important
+    secure: false,            // ✅ false for 587
     auth: {
-        user: process.env.EMAIL_USER,  // your email
-        pass: process.env.EMAIL_PASS   // app password
-    }
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    },
+    connectionTimeout: 10000, // ✅ prevent long hanging
+    greetingTimeout: 10000,
+    socketTimeout: 10000
 });
 
 /* ================= VERIFY ================= */
@@ -16,7 +21,7 @@ const verifyConnection = async () => {
         await transporter.verify();
         console.log("✅ Mail server ready");
     } catch (err) {
-        console.error("❌ Mail Error:", err.message);
+        console.error("❌ Mail Error:", err);
     }
 };
 
@@ -24,7 +29,7 @@ const verifyConnection = async () => {
 const sendMail = async ({ to, subject, html }) => {
     try {
         const info = await transporter.sendMail({
-            from: `"FullStack Cafe" <${process.env.EMAIL_USER}>`, // ✅ fixed
+            from: `"FullStack Cafe" <${process.env.EMAIL_USER}>`,
             to,
             subject,
             html
@@ -34,8 +39,8 @@ const sendMail = async ({ to, subject, html }) => {
         return info;
 
     } catch (err) {
-        console.error("❌ Email send error:", err.message);
-        throw err;
+        console.error("❌ Email send error:", err);
+        throw new Error("Email not sent");
     }
 };
 
