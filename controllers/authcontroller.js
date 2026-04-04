@@ -1,4 +1,4 @@
-const { sendMail } = require("../utils/mailer"); // ✅ your own mailer
+const { sendMail } = require("../utils/mailer"); 
 const User = require('../models/User');
 const Cart = require("../models/Cart");
 const bcrypt = require("bcryptjs");
@@ -9,22 +9,29 @@ const SECRET_KEY = process.env.SECRET_KEY || "supersecretkey";
 /* ================= SEND OTP EMAIL ================= */
 const sendOTPEmail = async (email, otp) => {
     try {
+        // Ensure email is trimmed and lowercase for the mailer
+        const recipient = email.trim().toLowerCase();
+
         await sendMail({
-            to: email,
+            to: recipient,
             subject: "Verify your FullStack Cafe Account",
             html: `
-                <h2>Email Verification</h2>
-                <p>Your OTP is:</p>
-                <h1>${otp}</h1>
-                <p>This OTP will expire in 10 minutes.</p>
+                <div style="font-family: Arial, sans-serif; text-align: center; border: 1px solid #ddd; padding: 20px;">
+                    <h2 style="color: #333;">Email Verification</h2>
+                    <p>Thank you for signing up for FullStack Cafe. Use the code below to verify your account:</p>
+                    <h1 style="color: #ff4757; letter-spacing: 5px;">${otp}</h1>
+                    <p style="color: #777;">This OTP will expire in 10 minutes.</p>
+                </div>
             `
         });
 
-        console.log("✅ OTP email sent to:", email);
+        console.log(`✅ OTP email successfully dispatched to: ${recipient}`);
+        return true;
 
     } catch (error) {
-        console.error("❌ Error sending OTP:", error);
-        throw new Error("Email not sent");
+        // We log the specific error here but throw a generic one to the signup controller
+        console.error("❌ Mailer logic failed:", error.message);
+        throw new Error("SMTP_ERROR"); 
     }
 };
 
@@ -168,17 +175,25 @@ const signup = async (req, res) => {
             }).save();
         }
 
-        await sendOTPEmail(email, otp);
+        // Attempt to send email
+        try {
+            await sendOTPEmail(email, otp);
+        } catch (mailError) {
+            return res.status(500).json({ 
+                success: false, 
+                message: "User created, but failed to send verification email. Please try resending OTP from login." 
+            });
+        }
 
         return res.json({
             success: true,
-            message: "OTP sent successfully",
+            message: "OTP sent successfully to " + email,
             email
         });
 
     } catch (err) {
-        console.error("❌ Signup Error:", err);
-        res.status(500).json({ success: false, message: "Error creating account." });
+        console.error("❌ Signup Controller Error:", err);
+        res.status(500).json({ success: false, message: "Internal server error during signup." });
     }
 };
 
@@ -205,7 +220,7 @@ const verifyOTP = async (req, res) => {
 
         res.json({ success: true, message: "Verified successfully!" });
 
-    } catch {
+    } catch (error) {
         res.status(500).json({ success: false, message: "Verification error." });
     }
 };
@@ -238,7 +253,7 @@ const login = async (req, res) => {
 
         return await proceedToLogin(user, req, res);
 
-    } catch {
+    } catch (error) {
         res.status(500).json({ success: false, message: "Login error occurred." });
     }
 };
