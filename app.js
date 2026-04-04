@@ -16,7 +16,7 @@ if (typeof MongoStore !== "function" && MongoStore.default) {
 }
 
 const connectDB = require("./config/db");
-const { checkAuth } = require("./controllers/authController"); // ✅ FIXED (capital C)
+const { checkAuth } = require("./controllers/authcontroller"); // ✅ FIXED (capital C)
 const { verifyConnection } = require("./utils/mailer"); // ✅ ADDED
 
 /* ================= APP & SERVER INIT ================= */
