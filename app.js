@@ -16,8 +16,8 @@ if (typeof MongoStore !== "function" && MongoStore.default) {
 }
 
 const connectDB = require("./config/db");
-const { checkAuth } = require("./controllers/authcontroller"); // ✅ FIXED (capital C)
-const { verifyConnection } = require("./utils/mailer"); // ✅ ADDED
+const { checkAuth } = require("./controllers/authcontroller"); 
+const { verifyConnection } = require("./utils/mailer"); 
 
 /* ================= APP & SERVER INIT ================= */
 const app = express();
@@ -30,7 +30,7 @@ const PORT = process.env.PORT || 3000;
 connectDB();
 
 /* ================= VERIFY MAIL SERVER ================= */
-verifyConnection(); // ✅ ADDED (checks SMTP at startup)
+verifyConnection(); 
 
 /* ================= VIEW ENGINE ================= */
 app.set("view engine", "ejs");
@@ -43,23 +43,27 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 /* ================= STATIC FILES ================= */
+// 1. Standard public folder (CSS, JS, images)
 app.use(express.static(path.join(__dirname, "public")));
-app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
-app.use("/public", express.static(path.join(__dirname, "public")));
+
+// 2. FIXED: Pointing to the root 'uploads' folder 
+// (Based on your VS Code sidebar, 'uploads' is a root folder, not inside 'public')
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 /* ================= SESSION ================= */
 app.use(session({
     secret: process.env.SESSION_SECRET || "cafe_secret_key",
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: false, // Recommended: false to comply with cookie laws
     store: MongoStore.create({
         mongoUrl: process.env.MONGO_URI,
-        collectionName: "sessions"
+        collectionName: "sessions",
+        ttl: 24 * 60 * 60 // 1 day
     }),
     cookie: {
         maxAge: 1000 * 60 * 60 * 24,
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production"
+        secure: process.env.NODE_ENV === "production" // Only use HTTPS in production
     }
 }));
 
@@ -79,18 +83,24 @@ io.on("connection", (socket) => {
     });
 });
 
-/* ================= AUTH ================= */
+/* ================= AUTH MIDDLEWARE ================= */
+// Important: checkAuth must come AFTER session middleware
 app.use(checkAuth);
 
 /* ================= GLOBAL VARIABLES ================= */
 app.use((req, res, next) => {
+    // Initialize cart if it doesn't exist
     if (!req.session.cart) {
         req.session.cart = [];
     }
 
+    // Make variables available to all EJS templates
     res.locals.session = req.session;
     res.locals.user = req.user || null;
-    res.locals.cartCount = req.session.cart.length;
+    res.locals.cartCount = req.session.cart.reduce((total, item) => total + (item.quantity || 1), 0);
+    
+    // Pass current URL for active state in nav
+    res.locals.path = req.path;
 
     next();
 });
@@ -105,12 +115,18 @@ app.use("/cart", require("./routes/cartRoutes"));
 
 /* ================= ERROR HANDLING ================= */
 app.use((req, res) => {
-    res.status(404).render("error", { message: "Page Not Found" });
+    res.status(404).render("error", { 
+        message: "Page Not Found",
+        user: req.user || null // Added user context for error page header
+    });
 });
 
 app.use((err, req, res, next) => {
-    console.error("❌ Server Error:", err);
-    res.status(500).render("error", { message: "Something went wrong!" });
+    console.error("❌ Server Error:", err.stack);
+    res.status(500).render("error", { 
+        message: "Something went wrong on our end!",
+        user: req.user || null
+    });
 });
 
 /* ================= SERVER START ================= */
@@ -122,8 +138,7 @@ server.listen(PORT, () => {
 server.on("error", (err) => {
     if (err.code === "EADDRINUSE") {
         console.error(`❌ Port ${PORT} is already in use`);
-
-        const newPort = PORT + 1;
+        const newPort = parseInt(PORT) + 1;
         server.listen(newPort, () => {
             console.log(`✅ Server switched to http://localhost:${newPort}`);
         });

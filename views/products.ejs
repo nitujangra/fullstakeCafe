@@ -205,7 +205,7 @@
 <div id="productModal" class="modal">
     <div class="modal-content">
         <span class="close-modal" onclick="closeModal()">&times;</span>
-        <img id="modal-img" src="" alt="" class="modal-img" onerror="this.src='https://via.placeholder.com/300?text=Image+Not+Found'">
+        <img id="modal-img" src="" alt="" class="modal-img" onerror="this.onerror=null; this.src='https://via.placeholder.com/300?text=No+Image';">
         <h2 id="modal-title">Product Name</h2>
         <p id="modal-description"></p>
         <p id="modal-price" style="color: #e67e22; font-weight: bold; margin-bottom: 5px;"></p>
@@ -235,8 +235,12 @@
     function getCleanImagePath(img) {
         if (!img) return 'https://via.placeholder.com/300?text=No+Image';
         if (img.startsWith('http')) return img;
+        
+        // Ensure path starts with /uploads/
         let path = img.includes('uploads/') ? img : `/uploads/${img}`;
         if (!path.startsWith('/')) path = '/' + path;
+        
+        // Encode spaces properly for the browser
         return path.replace(/ /g, '%20');
     }
 
@@ -277,7 +281,7 @@
                          alt="${food.name}" 
                          class="food-img" 
                          loading="lazy"
-                         onerror="this.src='https://via.placeholder.com/300?text=Image+Not+Found'"
+                         onerror="this.onerror=null; this.src='https://via.placeholder.com/300?text=Image+Not+Found';"
                          onclick="openProductModal('${food._id}', '${food.name}', '${food.price}', '${imagePath}', \`${sanitizedDesc}\`, ${food.stock})">
                     
                     <h3>${food.name}</h3>
@@ -315,7 +319,15 @@
         
         document.getElementById('modal-title').innerText = name;
         document.getElementById('modal-price').innerText = `₹ ${price}`;
-        document.getElementById('modal-img').src = image;
+        
+        // Reset modal img error handler before setting src
+        const modalImg = document.getElementById('modal-img');
+        modalImg.onerror = function() {
+            this.onerror = null;
+            this.src = 'https://via.placeholder.com/300?text=No+Image';
+        };
+        modalImg.src = image;
+        
         document.getElementById('modal-qty').innerText = currentQty;
         document.getElementById('modal-description').innerText = description;
         
@@ -377,7 +389,6 @@
         }
 
         try {
-            // Background sync - No page reload allowed here
             await fetch('/products/sync', { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -397,7 +408,6 @@
         setTimeout(() => toast.remove(), 3000);
     }
 
-    // Modal Add Button Listener
     document.getElementById('modal-add-btn').addEventListener('click', () => {
         if (currentProduct && maxStock > 0) {
             addToCart({ 
@@ -411,13 +421,11 @@
         }
     });
 
-    // Close Modal on outside click
     window.addEventListener('click', (e) => {
         const modal = document.getElementById('productModal');
         if (e.target === modal) closeModal();
     });
 
-    // CRITICAL: Initialize only when DOM is ready
     document.addEventListener('DOMContentLoaded', () => {
         renderPage();
     });
