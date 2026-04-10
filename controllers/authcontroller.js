@@ -1,4 +1,4 @@
-const { sendMail } = require("../utils/mailer"); // ✅ your own mailer
+const { sendMail } = require("../utils/mailer"); 
 const User = require('../models/User');
 const Cart = require("../models/Cart");
 const bcrypt = require("bcryptjs");
@@ -9,27 +9,31 @@ const SECRET_KEY = process.env.SECRET_KEY || "supersecretkey";
 /* ================= SEND OTP EMAIL ================= */
 const sendOTPEmail = async (email, otp) => {
     try {
+        // This calls your Gmail API mailer logic
         await sendMail({
             to: email,
             subject: "Verify your FullStack Cafe Account",
             html: `
-                <h2>Email Verification</h2>
-                <p>Your OTP is:</p>
-                <h1>${otp}</h1>
-                <p>This OTP will expire in 10 minutes.</p>
+                <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee;">
+                    <h2 style="color: #333;">Email Verification</h2>
+                    <p>Thank you for joining FullStack Cafe! Use the code below to verify your account:</p>
+                    <h1 style="background: #f4f4f4; padding: 10px; display: inline-block; letter-spacing: 5px;">${otp}</h1>
+                    <p>This OTP will expire in 10 minutes.</p>
+                    <p style="font-size: 0.8em; color: #888;">If you didn't request this, please ignore this email.</p>
+                </div>
             `
         });
-
-        console.log("✅ OTP email sent to:", email);
-
+        console.log("✅ Gmail API: OTP email sent to:", email);
     } catch (error) {
-        console.error("❌ Error sending OTP:", error);
-        throw new Error("Email not sent");
+        // Detailed log to see if it's a Token issue or Network issue
+        console.error("❌ Gmail API Error in sendOTPEmail:", error.message);
+        throw new Error("We couldn't send the verification email. Please try again later.");
     }
 };
 
 /* ================= HELPER LOGIN ================= */
 const proceedToLogin = async (user, req, res) => {
+    // Merge session cart into database cart
     if (req.session.cart && req.session.cart.length > 0) {
         let userCart = await Cart.findOne({ user: user._id });
 
@@ -44,7 +48,7 @@ const proceedToLogin = async (user, req, res) => {
         }
 
         await userCart.save();
-        req.session.cart = [];
+        req.session.cart = []; // Clear session cart after merging
     }
 
     const token = jwt.sign(
@@ -66,15 +70,16 @@ const proceedToLogin = async (user, req, res) => {
 
 /* ================= AUTH MIDDLEWARE ================= */
 const checkAuth = async (req, res, next) => {
+    const token = req.cookies?.token;
+    res.locals.isAuthenticated = false; // Default for frontend
+
+    if (!token) {
+        req.user = null;
+        res.locals.user = null;
+        return next();
+    }
+
     try {
-        const token = req.cookies?.token;
-
-        if (!token) {
-            req.user = null;
-            res.locals.user = null;
-            return next();
-        }
-
         const decoded = jwt.verify(token, SECRET_KEY);
         const user = await User.findById(decoded.id).select("-password");
 
@@ -82,14 +87,13 @@ const checkAuth = async (req, res, next) => {
             res.clearCookie("token");
             req.user = null;
             res.locals.user = null;
-            return next();
+        } else {
+            req.user = user;
+            res.locals.user = user;
+            res.locals.isAuthenticated = true;
         }
-
-        req.user = user;
-        res.locals.user = user;
         next();
-
-    } catch {
+    } catch (err) {
         res.clearCookie("token");
         req.user = null;
         res.locals.user = null;
@@ -97,34 +101,14 @@ const checkAuth = async (req, res, next) => {
     }
 };
 
-const requireAuth = async (req, res, next) => {
-    try {
-        if (req.user) return next();
-
-        const token = req.cookies?.token;
-        if (!token) return res.redirect("/login");
-
-        const decoded = jwt.verify(token, SECRET_KEY);
-        const user = await User.findById(decoded.id).select("-password");
-
-        if (!user) {
-            res.clearCookie("token");
-            return res.redirect("/login");
-        }
-
-        req.user = user;
-        res.locals.user = user;
-        next();
-
-    } catch {
-        res.clearCookie("token");
-        return res.redirect("/login");
-    }
+const requireAuth = (req, res, next) => {
+    if (req.user) return next();
+    res.redirect("/login");
 };
 
 const requireAdmin = (req, res, next) => {
     if (!req.user || req.user.role !== "admin") {
-        return res.redirect("/login");
+        return res.status(403).send("Unauthorized: Admins only.");
     }
     next();
 };
@@ -139,7 +123,6 @@ const signup = async (req, res) => {
         }
 
         email = email.trim().toLowerCase();
-
         const existingUser = await User.findOne({ email });
 
         if (existingUser && existingUser.isVerified) {
@@ -151,12 +134,14 @@ const signup = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         if (existingUser && !existingUser.isVerified) {
+            // Update existing unverified user
             existingUser.name = name.trim();
             existingUser.password = hashedPassword;
             existingUser.otp = otp;
             existingUser.otpExpires = otpExpires;
             await existingUser.save();
         } else {
+            // Create new unverified user
             await new User({
                 name: name.trim(),
                 email,
@@ -168,17 +153,18 @@ const signup = async (req, res) => {
             }).save();
         }
 
+        // Send OTP using the Gmail API mailer
         await sendOTPEmail(email, otp);
 
         return res.json({
             success: true,
-            message: "OTP sent successfully",
+            message: "A verification code has been sent to your email.",
             email
         });
 
     } catch (err) {
-        console.error("❌ Signup Error:", err);
-        res.status(500).json({ success: false, message: "Error creating account." });
+        console.error("❌ Signup Flow Error:", err.message);
+        res.status(500).json({ success: false, message: err.message || "Internal Server Error" });
     }
 };
 
@@ -186,8 +172,7 @@ const signup = async (req, res) => {
 const verifyOTP = async (req, res) => {
     try {
         const { email, otp } = req.body;
-
-        const user = await User.findOne({ email: email.toLowerCase() });
+        const user = await User.findOne({ email: email?.toLowerCase() });
 
         if (!user) {
             return res.status(404).json({ success: false, message: "User not found." });
@@ -198,15 +183,13 @@ const verifyOTP = async (req, res) => {
         }
 
         user.isVerified = true;
-        user.otp = undefined;
+        user.otp = undefined; // Clear OTP after use
         user.otpExpires = undefined;
-
         await user.save();
 
-        res.json({ success: true, message: "Verified successfully!" });
-
-    } catch {
-        res.status(500).json({ success: false, message: "Verification error." });
+        res.json({ success: true, message: "Email verified! You can now log in." });
+    } catch (err) {
+        res.status(500).json({ success: false, message: "Verification failed." });
     }
 };
 
@@ -220,25 +203,24 @@ const login = async (req, res) => {
         }
 
         email = email.trim().toLowerCase();
-
         const user = await User.findOne({ email });
 
         if (!user || !(await bcrypt.compare(password, user.password))) {
-            return res.status(401).json({ success: false, message: "Invalid email or password." });
+            return res.status(401).json({ success: false, message: "Invalid credentials." });
         }
 
+        // Logic: Require verification unless it's an admin (to make your testing easier)
         if (!user.isVerified && user.role !== "admin") {
             return res.status(403).json({
                 success: false,
-                message: "Please verify your email first.",
+                message: "Email not verified.",
                 isUnverified: true,
                 email: user.email
             });
         }
 
         return await proceedToLogin(user, req, res);
-
-    } catch {
+    } catch (err) {
         res.status(500).json({ success: false, message: "Login error occurred." });
     }
 };
@@ -246,7 +228,7 @@ const login = async (req, res) => {
 /* ================= LOGOUT ================= */
 const logout = (req, res) => {
     res.clearCookie("token");
-    res.redirect("/products");
+    res.redirect("/login"); // Redirect to login after logout
 };
 
 module.exports = {

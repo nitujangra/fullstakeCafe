@@ -30,7 +30,7 @@ const PORT = process.env.PORT || 3000;
 connectDB();
 
 /* ================= VERIFY MAIL SERVER ================= */
-verifyConnection(); // ✅ ADDED (checks SMTP at startup)
+// verifyConnection(); // ✅ ADDED (checks SMTP at startup)
 
 /* ================= VIEW ENGINE ================= */
 app.set("view engine", "ejs");
